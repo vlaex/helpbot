@@ -1,0 +1,1 @@
+web: python __init__.py && gunicorn __init__:app
