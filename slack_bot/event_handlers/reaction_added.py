@@ -24,15 +24,38 @@ def handle_reaction_added_event(event):
   if 'pinned_to' in message or 'subtype' in message:
     return
 
+  # Delete bot messages in #antispamers
+  if channel == channels['ANTISPAMERS'] and 'bot_profile' in message:
+    delete_message(channel_id=channel, ts=message['ts'])
+
+    blocks = message['blocks']
+
+    deleted_by_user = get_user_nick(event['user'])
+    
+    sender_id = re.search(r"(?<=<@)[A-Z0-9]*", blocks[2]['elements'][0]['text']).group()
+    sender_nick = get_user_nick(sender_id)
+
+    sheet.worksheet('Принятые репорты').insert_row([
+      re.search(r"https.+(?=>)", blocks[0]['text']['text']).group(),
+      sender_nick,
+      deleted_by_user,
+      ts_to_date(event['event_ts'])
+    ], 2)
+
+    return
+
   # Delete message in #help
   if channel == channels['HELP'] and re.search(reactions['REGEX'], event['reaction']):
     delete_message(channel_id=channel, ts=message['ts'])
 
+    message_sent_by = get_user_nick(message['user'])
+    message_deleted_by = get_user_nick(event['user'])
+
     sheet.worksheet('#help').insert_row([
       ts_to_date(message['ts']),
-      get_user_nick(message['user']),
+      message_sent_by,
       message['text'],
-      get_user_nick(event['user']),
+      message_deleted_by,
       ts_to_date(event['event_ts'])
     ], 2)
 

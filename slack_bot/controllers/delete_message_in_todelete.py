@@ -11,12 +11,14 @@ def delete_message_in_todelete(channel: str, event_ts: str, message):
     r"(?<=<)[A-Za-z:\/]+znanija\.com\/((app\/profile\/)|(profil\/\w+-)|(users\/user_content\/))\d+",
     message['text']
   )
-  delete_reason = re.search(r"(?<=(?<=>)\s|\|)\w+", message['text'])
+  delete_reason = re.search(r"(?<=(?<=>)\s|\|)[А-Яа-я]+", message['text'])
+
+  sent_by = get_user_nick(message['user'])
 
   sheet.worksheet('#to-delete').insert_row([
-    delete_reason.group() if delete_reason else '?',
+    delete_reason.group().capitalize() if delete_reason else '?',
     profile_link.group() if profile_link else 'https://znanija.com/profil/Incognito-0',
-    get_user_nick(message['user']),
+    sent_by,
     ts_to_date(message['ts']),
     ts_to_date(event_ts),
     message['text']

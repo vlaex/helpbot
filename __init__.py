@@ -7,6 +7,7 @@ from flask_app import app
 from slack_bot import bot
 
 # Init event handlers here
+import slack_bot.event_handlers.message_sent
 import slack_bot.event_handlers.reaction_added
 import slack_bot.event_handlers.errors
 
@@ -14,9 +15,10 @@ import slack_bot.event_handlers.errors
 import flask_app.delete_messages_by_user
 import flask_app.ping
 
-IS_DEV = os.environ.get('MODE') != 'production'
-
 # Open WebSocket connection
 
 socket_handler = SocketModeHandler(bot, os.environ['SLACK_APP_TOKEN'])
 socket_handler.connect()
+
+if os.environ.get('MODE') != 'production':
+  app.run()

@@ -2,7 +2,8 @@ from os import environ
 
 channels = {
   'HELP': environ['CHANNEL_HELP_ID'],
-  'TO_DELETE': environ['CHANNEL_TO_DELETE_ID']
+  'TO_DELETE': environ['CHANNEL_TO_DELETE_ID'],
+  'ANTISPAMERS': environ['CHANNEL_ANTISPAMERS_ID']
 }
 
 reactions = {
@@ -29,3 +30,5 @@ admins = [
   'U03C8Q4L2CR', 
   'U03BL66ABD4'
 ]
+
+TASK_ID_REGEX = r"(?<=\/task\/)\d+(?=\||>|\?)"
