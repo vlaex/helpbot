@@ -1,9 +1,9 @@
 import re
-import base64
 from slack_bot import bot
 from slack_bot.config import TASK_ID_REGEX, channels
 from slack_bot.utils.slack_messages import delete_message
-from slack_bot.utils.graphql import client
+from slack_bot.core.graphql import client, to_base64
+
 
 @bot.message(re.compile(r"снять\s(отметку|нарушение)|:blue_approve:", re.IGNORECASE))
 def send_to_antispamers(message):
@@ -11,11 +11,7 @@ def send_to_antispamers(message):
   if task_id is None:
     return
 
-  task_id = int(task_id.group())
-
-  encoded_task_id = base64.b64encode(
-    bytes(f"question:{task_id}", 'utf-8')
-  ).decode('utf-8')
+  task_id = task_id.group()
 
   question_data = client.execute(query="""
     query GetQuestion($questionId: ID!) {
@@ -25,15 +21,17 @@ def send_to_antispamers(message):
         answers { nodes {content} }
       }
     }
-  """, variables={'questionId': encoded_task_id})
+  """, variables={
+    'questionId': to_base64(task_id, 'question')
+  })
 
-  if 'errors' in question_data:
+  if "errors" in question_data:
     raise ValueError(f"An error has occured while trying to fetch Brainly: {question_data}")
 
   question = question_data['data']['question']
 
   if question is None:
-    raise ValueError(f"The question #{task_id} does not exist")
+    raise ValueError(f"The question {task_id} does not exist")
 
   question_content = re.sub(r"<\w+\s?\/?>", '', question['content'])
   subject = question['subject']['name']

@@ -1,73 +1,68 @@
 import re
 from slack_bot import bot
-from slack_bot.utils.slack_messages import get_message, delete_message
-from slack_bot.utils.sheets import sheet
-from slack_bot.utils.get_user import get_user_nick
+from slack_bot.utils.slack_messages import delete_message, get_delete_reason
+from slack_bot.config import admins, channels, reactions, PROFILE_LINK_REGEX
+from slack_bot.core.sheets import sheet
 from slack_bot.utils.ts_to_date import ts_to_date
-from slack_bot.config import admins, channels, reactions
-from slack_bot.controllers.delete_message_in_todelete import delete_message_in_todelete
+from slack_bot.core.users import SlackUser
+
 
 @bot.event('reaction_added')
-def handle_reaction_added_event(event):
+def handle_reaction_added_event(event, context):
+  reaction = event['reaction']
+  user = context['user_data']
+  user_id = user['id']
   channel = event['item']['channel']
   message_ts = event['item']['ts']
+  event_ts = event['event_ts']
 
-  if event['reaction'] == 'test_tube' and event['user'] in admins:
-    delete_message(channel_id=channel, ts=message_ts)
-    return
-
-  message = get_message(channel=channel, ts=message_ts)
-  if message is None:
-    print(f"Seems like this message does not exist in channel {channel}")
-    return
+  message = context['message']
 
   if 'pinned_to' in message or 'subtype' in message:
     return
 
-  # Delete bot messages in #antispamers
-  if channel == channels['ANTISPAMERS'] and 'bot_profile' in message:
-    delete_message(channel_id=channel, ts=message['ts'])
+  if reaction == 'test_tube' and user_id in admins:
+    delete_message(channel_id=channel, ts=message_ts)
+    return
+
+  if channel == channels['HELP'] and re.search(reactions['REGEX'], reaction):
+    delete_message(channel_id=channel, ts=message_ts)
+
+    sheet.worksheet('#help').insert_row([
+      ts_to_date(message_ts),
+      context['message_user']['profile']['display_name'] or context['message_user']['name'],
+      message['text'],
+      context['user_nick'],
+      ts_to_date(event_ts)
+    ], 2)
+  elif channel == channels['ANTISPAMERS'] and 'bot_profile' in message:
+    delete_message(channel_id=channel, ts=message_ts)
 
     blocks = message['blocks']
-
-    deleted_by_user = get_user_nick(event['user'])
-    
-    sender_id = re.search(r"(?<=<@)[A-Z0-9]*", blocks[2]['elements'][0]['text']).group()
-    sender_nick = get_user_nick(sender_id)
+    user_id = re.search(r"(?<=<@)[A-Z0-9]*", blocks[2]['elements'][0]['text']).group()
 
     sheet.worksheet('Принятые репорты').insert_row([
       re.search(r"https.+(?=>)", blocks[0]['text']['text']).group(),
-      sender_nick,
-      deleted_by_user,
-      ts_to_date(event['event_ts'])
+      SlackUser(user_id).get_nick(),
+      context['user_nick'],
+      ts_to_date(event_ts)
     ], 2)
-
-    return
-
-  # Delete message in #help
-  if channel == channels['HELP'] and re.search(reactions['REGEX'], event['reaction']):
-    delete_message(channel_id=channel, ts=message['ts'])
-
-    message_sent_by = get_user_nick(message['user'])
-    message_deleted_by = get_user_nick(event['user'])
-
-    sheet.worksheet('#help').insert_row([
-      ts_to_date(message['ts']),
-      message_sent_by,
-      message['text'],
-      message_deleted_by,
-      ts_to_date(event['event_ts'])
-    ], 2)
-
-    return
-
-  # Delete message in #to-delete
-  if channel == channels['TO_DELETE']:
-    if event['user'] not in admins or event['reaction'] not in reactions['TO_DELETE']:
+  elif channel == channels['TO_DELETE']:
+    if event['user'] not in admins or reaction not in reactions['TO_DELETE']:
       return
 
-    delete_message_in_todelete(
-      channel=channel,
-      event_ts=event['event_ts'], 
-      message=message
-    )
+    delete_message(channel_id=channel, ts=message_ts)
+
+    message_text = message['text']
+
+    profile_link = re.search(PROFILE_LINK_REGEX, message_text)
+    delete_reason = get_delete_reason(message_text)
+
+    sheet.worksheet('#to-delete').insert_row([
+      delete_reason,
+      profile_link.group() if profile_link else '?',
+      context['message_user_nick'],
+      ts_to_date(message_ts),
+      ts_to_date(event_ts),
+      message_text
+    ], 2)

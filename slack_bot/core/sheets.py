@@ -1,6 +1,7 @@
 import os
 import gspread
 
+
 credentials = {
   'type': 'service_account',
   'project_id': 'helpbot-spamouts',

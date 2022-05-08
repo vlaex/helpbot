@@ -8,7 +8,8 @@ disable=
   unspecified-encoding,
   invalid-name,
   trailing-whitespace,
-  wildcard-import
+  wildcard-import,
+  redefined-builtin
 
 [FORMAT]
 indent-string='  '

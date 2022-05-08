@@ -1,24 +1,16 @@
 import os
-from slack_bolt import App
-from slack_bolt.adapter.socket_mode import SocketModeHandler
-from flask import request
 
 from flask_app import app
-from slack_bot import bot
+from slack_bot import bot, socket_handler
 
-# Init event handlers here
-import slack_bot.event_handlers.message_sent
-import slack_bot.event_handlers.reaction_added
-import slack_bot.event_handlers.errors
+import slack_bot.event_handlers
+import flask_app.routes
 
-# Init Flask listeners here
-import flask_app.delete_messages_by_user
-import flask_app.ping
 
-# Open WebSocket connection
-
-socket_handler = SocketModeHandler(bot, os.environ['SLACK_APP_TOKEN'])
+# Open a WebSocket connection
 socket_handler.connect()
 
+# Run Flask app
 if os.environ.get('MODE') != 'production':
+  app.config['TEMPLATES_AUTO_RELOAD'] = True
   app.run()
